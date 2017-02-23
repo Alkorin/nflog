@@ -1,6 +1,10 @@
 package main
 
-import ()
+import (
+	"syscall"
+)
+
+type AF_FAMILY uint8
 
 type nlmsghdr struct {
 	Len   uint32
@@ -21,8 +25,9 @@ type nfattr struct {
 	Type uint16
 }
 
+type NFULNL_CFG_CMD uint8
 type nfulnl_msg_config_cmd struct {
-	Command uint8
+	Command NFULNL_CFG_CMD
 }
 
 type nfulnl_msg_config_mode struct {
@@ -54,4 +59,53 @@ type nflogHeader struct {
 type nflogTlv struct {
 	Len  uint16
 	Type uint16
+}
+
+func newNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) nfConfigCmd {
+	return nfConfigCmd{
+		Header: nlmsghdr{
+			Len:   25,
+			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
+			Flags: NLM_F_REQUEST | NLM_F_ACK,
+			Seq:   0,
+			Pid:   0,
+		},
+		Message: nfgenmsg{
+			Family:  family,
+			Version: NFNETLINK_V0,
+			ResId:   resId,
+		},
+		Attr: nfattr{
+			Len:  5,
+			Type: NFULA_CFG_CMD,
+		},
+		Cmd: nfulnl_msg_config_cmd{
+			Command: cmd,
+		},
+	}
+}
+
+func newNFConfigMode(resId uint16) nfConfigMode {
+	return nfConfigMode{
+		Header: nlmsghdr{
+			Len:   30,
+			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
+			Flags: NLM_F_REQUEST | NLM_F_ACK,
+			Seq:   0,
+			Pid:   0,
+		},
+		Message: nfgenmsg{
+			Family:  syscall.AF_UNSPEC,
+			Version: NFNETLINK_V0,
+			ResId:   resId,
+		},
+		Attr: nfattr{
+			Len:  10,
+			Type: NFULA_CFG_MODE,
+		},
+		Mode: nfulnl_msg_config_mode{
+			CopyMode:  NFULNL_COPY_META,
+			CopyRange: 0,
+		},
+	}
 }

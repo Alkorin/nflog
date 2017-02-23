@@ -19,27 +19,8 @@ func main() {
 	var seq uint32
 
 	// Send Unbind
-	configCmd := nfConfigCmd{
-		Header: nlmsghdr{
-			Len:   25,
-			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
-			Flags: NLM_F_REQUEST | NLM_F_ACK,
-			Seq:   seq,
-			Pid:   0,
-		},
-		Message: nfgenmsg{
-			Family:  AF_INET,
-			Version: NFNETLINK_V0,
-			ResId:   0,
-		},
-		Attr: nfattr{
-			Len:  5,
-			Type: NFULA_CFG_CMD,
-		},
-		Cmd: nfulnl_msg_config_cmd{
-			Command: NFULNL_CFG_CMD_PF_UNBIND,
-		},
-	}
+	configCmd := newNFConfigCmd(NFULNL_CFG_CMD_PF_UNBIND, syscall.AF_INET, 0)
+	configCmd.Header.Seq = seq
 
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, configCmd)
@@ -59,27 +40,8 @@ func main() {
 	seq++
 
 	// Send Bind
-	configCmd = nfConfigCmd{
-		Header: nlmsghdr{
-			Len:   25,
-			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
-			Flags: NLM_F_REQUEST | NLM_F_ACK,
-			Seq:   seq,
-			Pid:   0,
-		},
-		Message: nfgenmsg{
-			Family:  AF_INET,
-			Version: NFNETLINK_V0,
-			ResId:   0,
-		},
-		Attr: nfattr{
-			Len:  5,
-			Type: NFULA_CFG_CMD,
-		},
-		Cmd: nfulnl_msg_config_cmd{
-			Command: NFULNL_CFG_CMD_PF_BIND,
-		},
-	}
+	configCmd = newNFConfigCmd(NFULNL_CFG_CMD_PF_BIND, syscall.AF_INET, 0)
+	configCmd.Header.Seq = seq
 
 	buf = new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, configCmd)
@@ -99,27 +61,8 @@ func main() {
 	seq++
 
 	// Bind Grp 32
-	configCmd = nfConfigCmd{
-		Header: nlmsghdr{
-			Len:   25,
-			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
-			Flags: NLM_F_REQUEST | NLM_F_ACK,
-			Seq:   seq,
-			Pid:   0,
-		},
-		Message: nfgenmsg{
-			Family:  AF_UNSPEC,
-			Version: NFNETLINK_V0,
-			ResId:   0x2000,
-		},
-		Attr: nfattr{
-			Len:  5,
-			Type: NFULA_CFG_CMD,
-		},
-		Cmd: nfulnl_msg_config_cmd{
-			Command: NFULNL_CFG_CMD_BIND,
-		},
-	}
+	configCmd = newNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_UNSPEC, 0x2000)
+	configCmd.Header.Seq = seq
 
 	buf = new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, configCmd)
@@ -139,28 +82,8 @@ func main() {
 	seq++
 
 	// Set CopyMeta only
-	configMode := nfConfigMode{
-		Header: nlmsghdr{
-			Len:   30,
-			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
-			Flags: NLM_F_REQUEST | NLM_F_ACK,
-			Seq:   seq,
-			Pid:   0,
-		},
-		Message: nfgenmsg{
-			Family:  AF_UNSPEC,
-			Version: NFNETLINK_V0,
-			ResId:   0x0,
-		},
-		Attr: nfattr{
-			Len:  10,
-			Type: NFULA_CFG_CMD,
-		},
-		Mode: nfulnl_msg_config_mode{
-			CopyMode:  NFULNL_COPY_META,
-			CopyRange: 0,
-		},
-	}
+	configMode := newNFConfigMode(0x2000)
+	configMode.Header.Seq = seq
 
 	buf = new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, configMode)
