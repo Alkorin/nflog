@@ -1,4 +1,4 @@
-package main
+package nflog
 
 const NFNETLINK_V0 = 0
 

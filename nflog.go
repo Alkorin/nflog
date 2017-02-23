@@ -1,4 +1,4 @@
-package main
+package nflog
 
 import (
 	"bytes"
@@ -8,7 +8,14 @@ import (
 	"syscall"
 )
 
-func main() {
+type NFLog struct {
+  callback func([]byte)  
+}
+
+func New(f func([]byte)) *NFLog{
+
+  nfLog := &NFLog{callback: f}
+
 	reply := make([]byte, 2048)
 
 	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
@@ -110,11 +117,13 @@ func main() {
 
 		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, buffer[:n])
 
-		parse(buffer[:n])
+		nfLog.parseNFMsg(buffer[:n])
 	}
+
+  return nfLog
 }
 
-func parse(buffer []byte) error {
+func (n *NFLog) parseNFMsg(buffer []byte) error {
 
 	for len(buffer) > 0 {
 		reader := bytes.NewReader(buffer)
@@ -134,17 +143,18 @@ func parse(buffer []byte) error {
 
 		// Check only packets
 		if header.Type == ((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_PACKET) {
-			payload := buffer[16 : msgLen-1]
-			fmt.Printf("Payload:%+v\n", payload)
-			parseNFPacket(payload)
+			packet := buffer[16 : msgLen-1]
+			fmt.Printf("Payload:%+v\n", packet)
+			n.parseNFPacket(packet)
 		}
 
 		buffer = buffer[msgLen:]
 	}
+
 	return nil
 }
 
-func parseNFPacket(buffer []byte) {
+func (n *NFLog) parseNFPacket(buffer []byte) {
 	reader := bytes.NewReader(buffer)
 	var header nflogHeader
 	binary.Read(reader, binary.LittleEndian, &header)
@@ -164,14 +174,10 @@ func parseNFPacket(buffer []byte) {
 		case NFULA_PAYLOAD:
 			payload := make([]byte, align4_16(tlvHeader.Len-4))
 			reader.Read(payload)
-			parsePacket(payload[:tlvHeader.Len-4])
+			n.callback(payload[:tlvHeader.Len-4])
 		default:
 			reader.Seek(int64(align4_16(tlvHeader.Len-4)), io.SeekCurrent)
 		}
 
 	}
-}
-
-func parsePacket(payload []byte) {
-	fmt.Printf("DATA: %+v\n", payload)
 }

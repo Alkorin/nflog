@@ -1,4 +1,4 @@
-package main
+package nflog
 
 func align4_32(v uint32) uint32 {
 	return (v + 3) & 0xFFFFFFFC
