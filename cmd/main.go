@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-  _ = nflog.New(p)
+  _, _ = nflog.New(p)
   for{}
 }
 

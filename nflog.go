@@ -9,118 +9,102 @@ import (
 )
 
 type NFLog struct {
-  callback func([]byte)  
+	callback func([]byte)
+	fd       int
+	seq      uint32
 }
 
-func New(f func([]byte)) *NFLog{
+func New(f func([]byte)) (*NFLog, error) {
+	var err error
 
-  nfLog := &NFLog{callback: f}
+	n := &NFLog{callback: f}
 
-	reply := make([]byte, 2048)
-
-	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
+	n.fd, err = syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	var seq uint32
+	defer syscall.Close(n.fd)
 
 	// Send Unbind
-	configCmd := newNFConfigCmd(NFULNL_CFG_CMD_PF_UNBIND, syscall.AF_INET, 0)
-	configCmd.Header.Seq = seq
-
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, configCmd)
-	fmt.Printf("=> %+v\n", buf.Bytes())
-
-	err = syscall.Sendto(s, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_PF_UNBIND, syscall.AF_INET, 0)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	fmt.Printf("Err: [%+v]\n", err)
-
-	{
-		n, sa, err := syscall.Recvfrom(s, reply, 0)
-		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, reply[:n])
-	}
-
-	seq++
 
 	// Send Bind
-	configCmd = newNFConfigCmd(NFULNL_CFG_CMD_PF_BIND, syscall.AF_INET, 0)
-	configCmd.Header.Seq = seq
-
-	buf = new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, configCmd)
-	fmt.Printf("=> %+v\n", buf.Bytes())
-
-	err = syscall.Sendto(s, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_PF_BIND, syscall.AF_INET, 0)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	fmt.Printf("Err: [%+v]\n", err)
-
-	{
-		n, sa, err := syscall.Recvfrom(s, reply, 0)
-		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, reply[:n])
-	}
-
-	seq++
 
 	// Bind Grp 32
-	configCmd = newNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_UNSPEC, 0x2000)
-	configCmd.Header.Seq = seq
-
-	buf = new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, configCmd)
-	fmt.Printf("=> %+v\n", buf.Bytes())
-
-	err = syscall.Sendto(s, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, 0x2000)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	fmt.Printf("Err: [%+v]\n", err)
-
-	{
-		n, sa, err := syscall.Recvfrom(s, reply, 0)
-		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, reply[:n])
-	}
-
-	seq++
 
 	// Set CopyMeta only
-	configMode := newNFConfigMode(0x2000)
-	configMode.Header.Seq = seq
-
-	buf = new(bytes.Buffer)
-	binary.Write(buf, binary.LittleEndian, configMode)
-	fmt.Printf("=> %+v\n", buf.Bytes())
-
-	err = syscall.Sendto(s, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	err = n.sendNFConfigMode(0x2000)
 	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("Err: [%+v]\n", err)
-
-	{
-		n, sa, err := syscall.Recvfrom(s, reply, 0)
-		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, reply[:n])
+		return nil, err
 	}
 
 	for {
 		buffer := make([]byte, 65536)
-		n, sa, err := syscall.Recvfrom(s, buffer, 0)
+		s, _, err := syscall.Recvfrom(n.fd, buffer, 0)
 		if err != nil {
-			panic(err)
+			fmt.Printf("%+v\n", err)
+			return nil, err
 		}
 
-		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, buffer[:n])
-
-		nfLog.parseNFMsg(buffer[:n])
+		n.parseNFMsg(buffer[:s])
 	}
 
-  return nfLog
+	return n, nil
+}
+
+func (n *NFLog) sendNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) error {
+	c := newNFConfigCmd(cmd, family, resId)
+	c.Header.Seq = n.seq
+
+	n.seq++
+
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, c)
+
+	err := syscall.Sendto(n.fd, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	if err != nil {
+		return err
+	}
+
+	// Wait reply
+	// TODO Parse/Check it
+	reply := make([]byte, 2048)
+	_, _, err = syscall.Recvfrom(n.fd, reply, 0)
+
+	return err
+}
+
+func (n *NFLog) sendNFConfigMode(resId uint16) error {
+	c := newNFConfigMode(resId)
+	c.Header.Seq = n.seq
+
+	n.seq++
+
+	buf := new(bytes.Buffer)
+	binary.Write(buf, binary.LittleEndian, c)
+
+	err := syscall.Sendto(n.fd, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	if err != nil {
+		return err
+	}
+
+	// Wait reply
+	// TODO Parse/Check it
+	reply := make([]byte, 2048)
+	_, _, err = syscall.Recvfrom(n.fd, reply, 0)
+
+	return err
 }
 
 func (n *NFLog) parseNFMsg(buffer []byte) error {
