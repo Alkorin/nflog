@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 )
 
 const AF_INET = 2
@@ -83,6 +84,35 @@ type nfConfigMode struct {
 	Attr    nfattr
 	Mode    nfulnl_msg_config_mode
 }
+
+type nflogHeader struct {
+	Family  uint8
+	Version uint8
+	ResId   uint16 // BigEndian
+}
+
+type nflogTlv struct {
+	Len  uint16
+	Type uint16
+}
+
+const NFULA_PACKET_HDR = 1         /* nflog_packet_hdr_t */
+const NFULA_MARK = 2               /* packet mark from skbuff */
+const NFULA_TIMESTAMP = 3          /* nflog_timestamp_t for skbuff's time stamp */
+const NFULA_IFINDEX_INDEV = 4      /* ifindex of device on which packet received (possibly bridge group) */
+const NFULA_IFINDEX_OUTDEV = 5     /* ifindex of device on which packet transmitted (possibly bridge group) */
+const NFULA_IFINDEX_PHYSINDEV = 6  /* ifindex of physical device on which packet received (not bridge group) */
+const NFULA_IFINDEX_PHYSOUTDEV = 7 /* ifindex of physical device on which packet transmitted (not bridge group) */
+const NFULA_HWADDR = 8             /* nflog_hwaddr_t for hardware address */
+const NFULA_PAYLOAD = 9            /* packet payload */
+const NFULA_PREFIX = 10            /* text string - null-terminated, count includes NUL */
+const NFULA_UID = 11               /* UID owning socket on which packet was sent/received */
+const NFULA_SEQ = 12               /* sequence number of packets on this NFLOG socket */
+const NFULA_SEQ_GLOBAL = 13        /* sequence number of pakets on all NFLOG sockets */
+const NFULA_GID = 14               /* GID owning socket on which packet was sent/received */
+const NFULA_HWTYPE = 15            /* ARPHRD_ type of skbuff's device */
+const NFULA_HWHEADER = 16          /* skbuff's MAC-layer header */
+const NFULA_HWLEN = 17             /* length of skbuff's MAC-layer header */
 
 func main() {
 	reply := make([]byte, 2048)
@@ -255,8 +285,84 @@ func main() {
 	}
 
 	for {
-		buffer := make([]byte, 8192)
+		buffer := make([]byte, 65536)
 		n, sa, err := syscall.Recvfrom(s, buffer, 0)
+		if err != nil {
+			panic(err)
+		}
+
 		fmt.Printf("n:%+v sa:%+v, err: %+v, data:%+v\n", n, sa, err, buffer[:n])
+
+		parse(buffer[:n])
 	}
+}
+
+func parse(buffer []byte) error {
+
+	for len(buffer) > 0 {
+		reader := bytes.NewReader(buffer)
+
+		// Read header
+		var header nlmsghdr
+		binary.Read(reader, binary.LittleEndian, &header)
+
+		fmt.Printf("Header: %+v\n", header)
+
+		msgLen := header.Len
+
+		if msgLen > uint32(len(buffer)) {
+			fmt.Printf("Msg truncated, skip")
+			return fmt.Errorf("TRUNC")
+		}
+
+		// Check only packets
+		if header.Type == ((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_PACKET) {
+			payload := buffer[16 : msgLen-1]
+			fmt.Printf("Payload:%+v\n", payload)
+			parseNFPacket(payload)
+		}
+
+		buffer = buffer[msgLen:]
+	}
+	return nil
+}
+
+func parseNFPacket(buffer []byte) {
+	reader := bytes.NewReader(buffer)
+	var header nflogHeader
+	binary.Read(reader, binary.LittleEndian, &header)
+	fmt.Printf("Packet Header: %+v\n", header)
+
+	// TODO Check Family && ResId (nlog group)
+	var tlvHeader nflogTlv
+
+	for reader.Len() != 0 {
+		err := binary.Read(reader, binary.LittleEndian, &tlvHeader)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("TLV Header: %+v\n", tlvHeader)
+
+		switch tlvHeader.Type {
+		case NFULA_PAYLOAD:
+			payload := make([]byte, align4_16(tlvHeader.Len-4))
+			reader.Read(payload)
+			parsePacket(payload[:tlvHeader.Len-4])
+		default:
+			reader.Seek(int64(align4_16(tlvHeader.Len-4)), io.SeekCurrent)
+		}
+
+	}
+}
+
+func parsePacket(payload []byte) {
+	fmt.Printf("DATA: %+v\n", payload)
+}
+
+func align4_32(v uint32) uint32 {
+	return (v + 3) & 0xFFFFFFFC
+}
+
+func align4_16(v uint16) uint16 {
+	return (v + 3) & 0xFFFC
 }
