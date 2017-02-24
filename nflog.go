@@ -9,58 +9,57 @@ import (
 )
 
 type NFLog struct {
-	callback func([]byte)
-	fd       int
-	seq      uint32
+	fd  int
+	seq uint32
+
+	c chan NFLogMsg
 }
 
-func New(f func([]byte)) (*NFLog, error) {
+func New() (*NFLog, error) {
 	var err error
 
-	n := &NFLog{callback: f}
+	n := &NFLog{c: make(chan NFLogMsg)}
 
 	n.fd, err = syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
 	if err != nil {
 		return nil, err
 	}
-	defer syscall.Close(n.fd)
 
 	// Send Unbind
 	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_PF_UNBIND, syscall.AF_INET, 0)
 	if err != nil {
+		syscall.Close(n.fd)
 		return nil, err
 	}
 
 	// Send Bind
 	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_PF_BIND, syscall.AF_INET, 0)
 	if err != nil {
+		syscall.Close(n.fd)
 		return nil, err
 	}
 
 	// Bind Grp 32
 	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, 0x2000)
 	if err != nil {
+		syscall.Close(n.fd)
 		return nil, err
 	}
 
 	// Set CopyMeta only
-	err = n.sendNFConfigMode(0x2000)
+	err = n.sendNFConfigMode(0x2000, 0x40000000)
 	if err != nil {
+		syscall.Close(n.fd)
 		return nil, err
 	}
 
-	for {
-		buffer := make([]byte, 65536)
-		s, _, err := syscall.Recvfrom(n.fd, buffer, 0)
-		if err != nil {
-			fmt.Printf("%+v\n", err)
-			return nil, err
-		}
-
-		n.parseNFMsg(buffer[:s])
-	}
+	go n.readNFMsg()
 
 	return n, nil
+}
+
+func (n NFLog) Messages() <-chan NFLogMsg {
+	return n.c
 }
 
 func (n *NFLog) sendNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) error {
@@ -85,8 +84,8 @@ func (n *NFLog) sendNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) 
 	return err
 }
 
-func (n *NFLog) sendNFConfigMode(resId uint16) error {
-	c := newNFConfigMode(resId)
+func (n *NFLog) sendNFConfigMode(resId uint16, copyLen uint32) error {
+	c := newNFConfigMode(resId, copyLen)
 	c.Header.Seq = n.seq
 
 	n.seq++
@@ -107,8 +106,27 @@ func (n *NFLog) sendNFConfigMode(resId uint16) error {
 	return err
 }
 
-func (n *NFLog) parseNFMsg(buffer []byte) error {
+func (n *NFLog) readNFMsg() {
+	defer syscall.Close(n.fd)
 
+	buffer := make([]byte, 65536)
+	for {
+		s, _, err := syscall.Recvfrom(n.fd, buffer, 0)
+		if err == syscall.ENOBUFS {
+			continue
+		}
+		if err != nil {
+			return
+		}
+
+		err = n.parseNFMsg(buffer[:s])
+		if err != nil {
+			fmt.Printf("Failed to parse NFMsg: %s", err.Error())
+		}
+	}
+}
+
+func (n *NFLog) parseNFMsg(buffer []byte) error {
 	for len(buffer) > 0 {
 		reader := bytes.NewReader(buffer)
 
@@ -116,20 +134,18 @@ func (n *NFLog) parseNFMsg(buffer []byte) error {
 		var header nlmsghdr
 		binary.Read(reader, binary.LittleEndian, &header)
 
-		fmt.Printf("Header: %+v\n", header)
-
 		msgLen := header.Len
 
 		if msgLen > uint32(len(buffer)) {
-			fmt.Printf("Msg truncated, skip")
-			return fmt.Errorf("TRUNC")
+			return fmt.Errorf("message was truncated")
 		}
 
 		// Check only packets
 		if header.Type == ((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_PACKET) {
-			packet := buffer[16 : msgLen-1]
-			fmt.Printf("Payload:%+v\n", packet)
-			n.parseNFPacket(packet)
+			err := n.parseNFPacket(buffer[16 : msgLen-1])
+			if err != nil {
+				return fmt.Errorf("failed to parse NFPacket: %s", err.Error())
+			}
 		}
 
 		buffer = buffer[msgLen:]
@@ -138,30 +154,36 @@ func (n *NFLog) parseNFMsg(buffer []byte) error {
 	return nil
 }
 
-func (n *NFLog) parseNFPacket(buffer []byte) {
+func (n *NFLog) parseNFPacket(buffer []byte) error {
 	reader := bytes.NewReader(buffer)
+
+	// Read Header
 	var header nflogHeader
 	binary.Read(reader, binary.LittleEndian, &header)
-	fmt.Printf("Packet Header: %+v\n", header)
 
 	// TODO Check Family && ResId (nlog group)
 	var tlvHeader nflogTlv
 
+	var m NFLogMsg
+
 	for reader.Len() != 0 {
 		err := binary.Read(reader, binary.LittleEndian, &tlvHeader)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		fmt.Printf("TLV Header: %+v\n", tlvHeader)
 
 		switch tlvHeader.Type {
 		case NFULA_PAYLOAD:
 			payload := make([]byte, align4_16(tlvHeader.Len-4))
 			reader.Read(payload)
-			n.callback(payload[:tlvHeader.Len-4])
+			m.Payload = payload
 		default:
 			reader.Seek(int64(align4_16(tlvHeader.Len-4)), io.SeekCurrent)
 		}
-
 	}
+
+	// Send Msg to socket
+	n.c <- m
+
+	return nil
 }
