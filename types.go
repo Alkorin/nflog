@@ -114,9 +114,28 @@ type NFLogMsg struct {
 	Payload []byte
 }
 
+type ConfigurationError string
+
+func (err ConfigurationError) Error() string {
+	return "nflog: invalid configuration (" + string(err) + ")"
+}
+
 type Config struct {
+	Groups []uint16
 }
 
 func NewConfig() *Config {
 	return &Config{}
+}
+
+func (c Config) Validate() error {
+	if len(c.Groups) == 0 {
+		return ConfigurationError("No groups defined")
+	}
+
+	if len(c.Groups) > 32 {
+		return ConfigurationError("Number of groups should be <= 32")
+	}
+
+	return nil
 }

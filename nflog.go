@@ -18,6 +18,11 @@ type NFLog struct {
 func New(c *Config) (*NFLog, error) {
 	var err error
 
+	err = c.Validate()
+	if err != nil {
+		return nil, err
+	}
+
 	n := &NFLog{c: make(chan NFLogMsg)}
 
 	n.fd, err = syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
@@ -39,18 +44,20 @@ func New(c *Config) (*NFLog, error) {
 		return nil, err
 	}
 
-	// Bind Grp 32
-	err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, 0x2000)
-	if err != nil {
-		syscall.Close(n.fd)
-		return nil, err
-	}
+	for _, g := range c.Groups {
+		// Bind to groups
+		err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, htons(g))
+		if err != nil {
+			syscall.Close(n.fd)
+			return nil, err
+		}
 
-	// Set CopyMeta only
-	err = n.sendNFConfigMode(0x2000, 0x40000000)
-	if err != nil {
-		syscall.Close(n.fd)
-		return nil, err
+		// Set CopyMeta only
+		err = n.sendNFConfigMode(htons(g), 0x40000000)
+		if err != nil {
+			syscall.Close(n.fd)
+			return nil, err
+		}
 	}
 
 	go n.readNFMsg()
