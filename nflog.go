@@ -15,7 +15,7 @@ type NFLog struct {
 	c chan NFLogMsg
 }
 
-func New() (*NFLog, error) {
+func New(c *Config) (*NFLog, error) {
 	var err error
 
 	n := &NFLog{c: make(chan NFLogMsg)}

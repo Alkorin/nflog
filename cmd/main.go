@@ -7,7 +7,8 @@ import (
 )
 
 func main() {
-	n, _ := nflog.New()
+	conf := nflog.NewConfig()
+	n, _ := nflog.New(conf)
 	for m := range n.Messages() {
 		fmt.Printf("%+v\n", m)
 	}

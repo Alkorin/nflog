@@ -113,3 +113,10 @@ func newNFConfigMode(resId uint16, copyLen uint32) nfConfigMode {
 type NFLogMsg struct {
 	Payload []byte
 }
+
+type Config struct {
+}
+
+func NewConfig() *Config {
+	return &Config{}
+}
