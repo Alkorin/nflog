@@ -190,6 +190,14 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 			payload := make([]byte, align4_16(payloadLen))
 			reader.Read(payload)
 			m.Payload = payload[:payloadLen]
+		case NFULA_UID:
+			var uid uint32
+			binary.Read(reader, binary.BigEndian, &uid)
+			m.UID = &uid
+		case NFULA_GID:
+			var gid uint32
+			binary.Read(reader, binary.BigEndian, &gid)
+			m.GID = &gid
 		default:
 			reader.Seek(int64(align4_16(payloadLen)), io.SeekCurrent)
 		}

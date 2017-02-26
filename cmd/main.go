@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/Alkorin/nflog"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func main() {
@@ -17,6 +17,6 @@ func main() {
 	}
 
 	for m := range n.Messages() {
-		fmt.Printf("%+v\n", m)
+		spew.Dump(m)
 	}
 }
