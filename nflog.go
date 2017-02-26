@@ -179,13 +179,19 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 			return err
 		}
 
+		payloadLen := tlvHeader.Len - 4
+
 		switch tlvHeader.Type {
-		case NFULA_PAYLOAD:
-			payload := make([]byte, align4_16(tlvHeader.Len-4))
+		case NFULA_PREFIX:
+			payload := make([]byte, align4_16(payloadLen))
 			reader.Read(payload)
-			m.Payload = payload
+			m.Prefix = string(payload[:payloadLen-1]) // Removes NUL Byte
+		case NFULA_PAYLOAD:
+			payload := make([]byte, align4_16(payloadLen))
+			reader.Read(payload)
+			m.Payload = payload[:payloadLen]
 		default:
-			reader.Seek(int64(align4_16(tlvHeader.Len-4)), io.SeekCurrent)
+			reader.Seek(int64(align4_16(payloadLen)), io.SeekCurrent)
 		}
 	}
 

@@ -111,6 +111,7 @@ func newNFConfigMode(resId uint16, copyLen uint32) nfConfigMode {
 }
 
 type NFLogMsg struct {
+	Prefix  string
 	Payload []byte
 }
 
