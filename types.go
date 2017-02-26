@@ -73,7 +73,7 @@ func newNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) nfConfigCmd 
 		Message: nfgenmsg{
 			Family:  family,
 			Version: NFNETLINK_V0,
-			ResId:   resId,
+			ResId:   htons(resId),
 		},
 		Attr: nfattr{
 			Len:  5,
@@ -97,7 +97,7 @@ func newNFConfigMode(resId uint16, copyLen uint32) nfConfigMode {
 		Message: nfgenmsg{
 			Family:  syscall.AF_UNSPEC,
 			Version: NFNETLINK_V0,
-			ResId:   resId,
+			ResId:   htons(resId),
 		},
 		Attr: nfattr{
 			Len:  10,

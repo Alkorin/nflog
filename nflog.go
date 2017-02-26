@@ -46,14 +46,14 @@ func New(c *Config) (*NFLog, error) {
 
 	for _, g := range c.Groups {
 		// Bind to groups
-		err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, htons(g))
+		err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, g)
 		if err != nil {
 			syscall.Close(n.fd)
 			return nil, err
 		}
 
 		// Set CopyMeta only
-		err = n.sendNFConfigMode(htons(g), 0x40000000)
+		err = n.sendNFConfigMode(g, 0x40000000)
 		if err != nil {
 			syscall.Close(n.fd)
 			return nil, err
