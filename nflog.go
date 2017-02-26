@@ -226,6 +226,15 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 			var addr NFLogHwAddr
 			binary.Read(reader, binary.BigEndian, &addr)
 			m.HwAddr = &addr
+		case NFULA_HWTYPE:
+			var t uint16
+			binary.Read(reader, binary.BigEndian, &t)
+			m.MacLayerType = &t
+			reader.Seek(2, io.SeekCurrent) // Padding
+		case NFULA_HWHEADER:
+			payload := make([]byte, align4_16(payloadLen))
+			reader.Read(payload)
+			m.MacLayer = payload[:payloadLen]
 		default:
 			reader.Seek(int64(align4_16(payloadLen)), io.SeekCurrent)
 		}

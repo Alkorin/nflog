@@ -117,11 +117,13 @@ func newNFConfigMode(resId uint16, copyLen uint32) nfConfigMode {
 }
 
 type NFLogMsg struct {
-	Prefix  string
-	UID     *uint32
-	GID     *uint32
-	InDev   *uint32
-	OutDev  *uint32
-	HwAddr  *NFLogHwAddr
-	Payload []byte
+	Prefix       string
+	UID          *uint32
+	GID          *uint32
+	InDev        *uint32
+	OutDev       *uint32
+	HwAddr       *NFLogHwAddr
+	MacLayerType *uint16
+	MacLayer     []byte
+	Payload      []byte
 }
