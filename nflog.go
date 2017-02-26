@@ -3,7 +3,7 @@ package nflog
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+	"errors"
 	"io"
 	"syscall"
 )
@@ -12,18 +12,24 @@ type NFLog struct {
 	fd  int
 	seq uint32
 
-	c chan NFLogMsg
+	c      chan NFLogMsg
+	errors chan error
+
+	conf *Config
 }
 
-func New(c *Config) (*NFLog, error) {
+func New(conf *Config) (*NFLog, error) {
 	var err error
 
-	err = c.Validate()
+	err = conf.Validate()
 	if err != nil {
 		return nil, err
 	}
 
-	n := &NFLog{c: make(chan NFLogMsg)}
+	n := &NFLog{c: make(chan NFLogMsg), conf: conf}
+	if conf.Return.Errors {
+		n.errors = make(chan error)
+	}
 
 	n.fd, err = syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_RAW, syscall.NETLINK_NETFILTER)
 	if err != nil {
@@ -44,7 +50,7 @@ func New(c *Config) (*NFLog, error) {
 		return nil, err
 	}
 
-	for _, g := range c.Groups {
+	for _, g := range conf.Groups {
 		// Bind to groups
 		err = n.sendNFConfigCmd(NFULNL_CFG_CMD_BIND, syscall.AF_INET, g)
 		if err != nil {
@@ -67,6 +73,10 @@ func New(c *Config) (*NFLog, error) {
 
 func (n NFLog) Messages() <-chan NFLogMsg {
 	return n.c
+}
+
+func (n NFLog) Errors() <-chan error {
+	return n.errors
 }
 
 func (n *NFLog) sendNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) error {
@@ -119,16 +129,22 @@ func (n *NFLog) readNFMsg() {
 	buffer := make([]byte, 65536)
 	for {
 		s, _, err := syscall.Recvfrom(n.fd, buffer, 0)
-		if err == syscall.ENOBUFS {
-			continue
-		}
 		if err != nil {
+			if n.conf.Return.Errors {
+				n.errors <- ReaderError(err.Error())
+			}
+			if err == syscall.ENOBUFS {
+				// Non critical error, continue
+				continue
+			}
 			return
 		}
 
 		err = n.parseNFMsg(buffer[:s])
 		if err != nil {
-			fmt.Printf("Failed to parse NFMsg: %s", err.Error())
+			if n.conf.Return.Errors {
+				n.errors <- ParserError(err.Error())
+			}
 		}
 	}
 }
@@ -144,14 +160,14 @@ func (n *NFLog) parseNFMsg(buffer []byte) error {
 		msgLen := header.Len
 
 		if msgLen > uint32(len(buffer)) {
-			return fmt.Errorf("message was truncated")
+			return errors.New("message was truncated")
 		}
 
 		// Check only packets
 		if header.Type == ((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_PACKET) {
 			err := n.parseNFPacket(buffer[16 : msgLen-1])
 			if err != nil {
-				return fmt.Errorf("failed to parse NFPacket: %s", err.Error())
+				return errors.New("failed to parse NFPacket: " + err.Error())
 			}
 		}
 
