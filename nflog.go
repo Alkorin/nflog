@@ -214,6 +214,18 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 			var gid uint32
 			binary.Read(reader, binary.BigEndian, &gid)
 			m.GID = &gid
+		case NFULA_IFINDEX_INDEV:
+			var i uint32
+			binary.Read(reader, binary.BigEndian, &i)
+			m.InDev = &i
+		case NFULA_IFINDEX_OUTDEV:
+			var o uint32
+			binary.Read(reader, binary.BigEndian, &o)
+			m.OutDev = &o
+		case NFULA_HWADDR:
+			var addr NFLogHwAddr
+			binary.Read(reader, binary.BigEndian, &addr)
+			m.HwAddr = &addr
 		default:
 			reader.Seek(int64(align4_16(payloadLen)), io.SeekCurrent)
 		}

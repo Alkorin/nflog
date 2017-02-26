@@ -61,6 +61,12 @@ type nflogTlv struct {
 	Type uint16
 }
 
+type NFLogHwAddr struct {
+	Len  uint16
+	Pad  uint16
+	Addr [8]uint8
+}
+
 func newNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) nfConfigCmd {
 	return nfConfigCmd{
 		Header: nlmsghdr{
@@ -114,5 +120,8 @@ type NFLogMsg struct {
 	Prefix  string
 	UID     *uint32
 	GID     *uint32
+	InDev   *uint32
+	OutDev  *uint32
+	HwAddr  *NFLogHwAddr
 	Payload []byte
 }
