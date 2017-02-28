@@ -10,6 +10,7 @@ import (
 func main() {
 	conf := nflog.NewConfig()
 	conf.Groups = []uint16{32}
+	conf.CopyRange = 64
 	conf.Return.Errors = true
 
 	n, err := nflog.New(conf)

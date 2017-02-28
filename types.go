@@ -91,7 +91,7 @@ func newNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) nfConfigCmd 
 	}
 }
 
-func newNFConfigMode(resId uint16, copyLen uint32) nfConfigMode {
+func newNFConfigMode(resId uint16, copyLen uint16) nfConfigMode {
 	return nfConfigMode{
 		Header: nlmsghdr{
 			Len:   30,
@@ -111,7 +111,7 @@ func newNFConfigMode(resId uint16, copyLen uint32) nfConfigMode {
 		},
 		Mode: nfulnl_msg_config_mode{
 			CopyMode:  NFULNL_COPY_PACKET,
-			CopyRange: copyLen,
+			CopyRange: htonl(uint32(copyLen)),
 		},
 	}
 }

@@ -59,7 +59,7 @@ func New(conf *Config) (*NFLog, error) {
 		}
 
 		// Set CopyMeta only
-		err = n.sendNFConfigMode(g, 0x40000000)
+		err = n.sendNFConfigMode(g, conf.CopyRange)
 		if err != nil {
 			syscall.Close(n.fd)
 			return nil, err
@@ -101,7 +101,7 @@ func (n *NFLog) sendNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) 
 	return err
 }
 
-func (n *NFLog) sendNFConfigMode(resId uint16, copyLen uint32) error {
+func (n *NFLog) sendNFConfigMode(resId uint16, copyLen uint16) error {
 	c := newNFConfigMode(resId, copyLen)
 	c.Header.Seq = n.seq
 
