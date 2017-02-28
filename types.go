@@ -117,6 +117,8 @@ func newNFConfigMode(resId uint16, copyLen uint16) nfConfigMode {
 }
 
 type NFLogMsg struct {
+	Group        uint16
+	Family       uint8
 	Prefix       string
 	UID          *uint32
 	GID          *uint32

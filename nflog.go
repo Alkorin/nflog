@@ -184,11 +184,11 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 	var header nflogHeader
 	binary.Read(reader, binary.LittleEndian, &header)
 
-	// TODO Check Family && ResId (nlog group)
-	var tlvHeader nflogTlv
-
 	var m NFLogMsg
+	m.Family = header.Family
+	m.Group = htons(header.ResId)
 
+	var tlvHeader nflogTlv
 	for reader.Len() != 0 {
 		err := binary.Read(reader, binary.LittleEndian, &tlvHeader)
 		if err != nil {
