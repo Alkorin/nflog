@@ -58,7 +58,7 @@ type nflogTlv struct {
 	Type uint16
 }
 
-type NFLogHwAddr struct {
+type HwAddr struct {
 	Len  uint16
 	Pad  uint16
 	Addr [8]uint8
@@ -113,7 +113,7 @@ func newNFConfigMode(resId uint16, copyLen uint16) nfConfigMode {
 	}
 }
 
-type NFLogMsg struct {
+type Msg struct {
 	Group        uint16
 	Family       uint8
 	Prefix       string
@@ -121,7 +121,7 @@ type NFLogMsg struct {
 	GID          *uint32
 	InDev        *uint32
 	OutDev       *uint32
-	HwAddr       *NFLogHwAddr
+	HwAddr       *HwAddr
 	MacLayerType *uint16
 	MacLayer     []byte
 	Payload      []byte

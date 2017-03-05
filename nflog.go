@@ -15,7 +15,7 @@ type NFLog struct {
 	fd  int
 	seq uint32
 
-	c      chan NFLogMsg
+	c      chan Msg
 	errors chan error
 
 	conf *Config
@@ -29,7 +29,7 @@ func New(conf *Config) (*NFLog, error) {
 		return nil, err
 	}
 
-	n := &NFLog{c: make(chan NFLogMsg), conf: conf}
+	n := &NFLog{c: make(chan Msg), conf: conf}
 	if conf.Return.Errors {
 		n.errors = make(chan error)
 	}
@@ -74,7 +74,7 @@ func New(conf *Config) (*NFLog, error) {
 	return n, nil
 }
 
-func (n NFLog) Messages() <-chan NFLogMsg {
+func (n NFLog) Messages() <-chan Msg {
 	return n.c
 }
 
@@ -187,7 +187,7 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 	var header nflogHeader
 	binary.Read(reader, binary.LittleEndian, &header)
 
-	var m NFLogMsg
+	var m Msg
 	m.Family = header.Family
 	m.Group = htons(header.ResId)
 
@@ -226,7 +226,7 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 			binary.Read(reader, binary.BigEndian, &o)
 			m.OutDev = &o
 		case NFULA_HWADDR:
-			var addr NFLogHwAddr
+			var addr HwAddr
 			binary.Read(reader, binary.BigEndian, &addr)
 			m.HwAddr = &addr
 		case NFULA_HWTYPE:
