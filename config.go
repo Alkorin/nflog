@@ -1,5 +1,6 @@
 package nflog
 
+// Config is used to pass multiple configuration options to NFLog's constructor.
 type Config struct {
 	// List of NFLog Group to listen. Max 32 values.
 	Groups []uint16
@@ -17,10 +18,12 @@ type Config struct {
 	}
 }
 
+// NewConfig returns a new configuration instance
 func NewConfig() *Config {
 	return &Config{}
 }
 
+// Validate checks a Config instance. It will return a ConfigurationError if the specified values don't make sense.
 func (c Config) Validate() error {
 	if len(c.Groups) == 0 {
 		return ConfigurationError("No groups defined")
