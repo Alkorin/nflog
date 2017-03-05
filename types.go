@@ -4,8 +4,6 @@ import (
 	"syscall"
 )
 
-type AF_FAMILY uint8
-
 type nlmsghdr struct {
 	Len   uint32
 	Type  uint16
