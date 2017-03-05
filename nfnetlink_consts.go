@@ -2,8 +2,11 @@ package nflog
 
 // See linux/netfilter/nfnetlink.h.
 
+// Netfilter netlink version
 const NFNETLINK_V0 = 0
 
+// Netfiler netlink message type, splitted in two pieces:
+// 8 bit subsystem, 8bit operation
 const (
 	NFNL_SUBSYS_NONE = iota
 	NFNL_SUBSYS_CTNETLINK

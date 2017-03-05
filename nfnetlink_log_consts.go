@@ -2,23 +2,14 @@ package nflog
 
 // See linux/netfilter/nfnetlink_log.h
 
+// enum nfulnl_msg_types
 const (
 	NFULNL_MSG_PACKET = iota
 	NFULNL_MSG_CONFIG
 	NFULNL_MSG_MAX
 )
 
-const (
-	NFULA_CFG_UNSPEC   = iota
-	NFULA_CFG_CMD      /* nfulnl_msg_config_cmd */
-	NFULA_CFG_MODE     /* nfulnl_msg_config_mode */
-	NFULA_CFG_NLBUFSIZ /* __u32 buffer size */
-	NFULA_CFG_TIMEOUT  /* __u32 in 1/100 s */
-	NFULA_CFG_QTHRESH  /* __u32 */
-	NFULA_CFG_FLAGS    /* __u16 */
-	__NFULA_CFG_MAX
-)
-
+// enum nfulnl_msg_config_cmds
 const (
 	NFULNL_CFG_CMD_NONE = iota
 	NFULNL_CFG_CMD_BIND
@@ -33,6 +24,19 @@ const (
 	NFULNL_COPY_PACKET
 )
 
+// enum nfulnl_attr_config
+const (
+	NFULA_CFG_UNSPEC   = iota
+	NFULA_CFG_CMD      /* nfulnl_msg_config_cmd */
+	NFULA_CFG_MODE     /* nfulnl_msg_config_mode */
+	NFULA_CFG_NLBUFSIZ /* __u32 buffer size */
+	NFULA_CFG_TIMEOUT  /* __u32 in 1/100 s */
+	NFULA_CFG_QTHRESH  /* __u32 */
+	NFULA_CFG_FLAGS    /* __u16 */
+	__NFULA_CFG_MAX
+)
+
+// enum nfulnl_attr_type
 const (
 	NFULA_UNSPEC = iota
 	NFULA_PACKET_HDR
@@ -54,6 +58,5 @@ const (
 	NFULA_HWLEN              /* hardware header length */
 	NFULA_CT                 /* nf_conntrack_netlink.h */
 	NFULA_CT_INFO            /* enum ip_conntrack_info */
-
 	__NFULA_MAX
 )
