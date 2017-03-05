@@ -1,3 +1,6 @@
+/*
+Package nflog is a pure Go client library for capturing and parsing NFLog messages
+*/
 package nflog
 
 import (
