@@ -1,9 +1,5 @@
 package nflog
 
-const NFNETLINK_V0 = 0
-
-const NFNL_SUBSYS_ULOG = 4
-
 const NFULNL_MSG_PACKET = 0
 const NFULNL_MSG_CONFIG = 1
 const NFULNL_MSG_MAX = 2
