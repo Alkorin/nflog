@@ -23,9 +23,8 @@ type nfattr struct {
 	Type uint16
 }
 
-type NFULNL_CFG_CMD uint8
 type nfulnl_msg_config_cmd struct {
-	Command NFULNL_CFG_CMD
+	Command uint8
 }
 
 type nfulnl_msg_config_mode struct {
@@ -65,7 +64,7 @@ type NFLogHwAddr struct {
 	Addr [8]uint8
 }
 
-func newNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) nfConfigCmd {
+func newNFConfigCmd(cmd uint8, family uint8, resId uint16) nfConfigCmd {
 	return nfConfigCmd{
 		Header: nlmsghdr{
 			Len:   25,

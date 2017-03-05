@@ -79,7 +79,7 @@ func (n NFLog) Errors() <-chan error {
 	return n.errors
 }
 
-func (n *NFLog) sendNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) error {
+func (n *NFLog) sendNFConfigCmd(cmd uint8, family uint8, resId uint16) error {
 	c := newNFConfigCmd(cmd, family, resId)
 	c.Header.Seq = n.seq
 
