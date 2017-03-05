@@ -72,7 +72,7 @@ func newNFConfigCmd(cmd NFULNL_CFG_CMD, family uint8, resId uint16) nfConfigCmd 
 		Header: nlmsghdr{
 			Len:   25,
 			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
-			Flags: NLM_F_REQUEST | NLM_F_ACK,
+			Flags: syscall.NLM_F_REQUEST | syscall.NLM_F_ACK,
 			Seq:   0,
 			Pid:   0,
 		},
@@ -96,7 +96,7 @@ func newNFConfigMode(resId uint16, copyLen uint16) nfConfigMode {
 		Header: nlmsghdr{
 			Len:   30,
 			Type:  (NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_CONFIG,
-			Flags: NLM_F_REQUEST | NLM_F_ACK,
+			Flags: syscall.NLM_F_REQUEST | syscall.NLM_F_ACK,
 			Seq:   0,
 			Pid:   0,
 		},

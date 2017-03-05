@@ -2,9 +2,6 @@ package nflog
 
 const NFNETLINK_V0 = 0
 
-const NLM_F_REQUEST = 1
-const NLM_F_ACK = 4
-
 const NFNL_SUBSYS_ULOG = 4
 
 const NFULNL_MSG_PACKET = 0
