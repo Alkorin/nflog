@@ -1,22 +1,22 @@
 package nflog
 
 import (
-  "log"
+	"log"
 )
 
 func Example() {
-  // Create config
+	// Create config
 	conf := NewConfig()
-  // Listen on group 32
+	// Listen on group 32
 	conf.Groups = []uint16{32}
 
-  // Instanciate NFLog
+	// Instanciate NFLog
 	n, err := New(conf)
 	if err != nil {
-    panic(err)
+		panic(err)
 	}
 
-  // Listen for messages
+	// Listen for messages
 	for m := range n.Messages() {
 		log.Printf("Received message: %+v", m)
 	}
