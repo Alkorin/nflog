@@ -2,7 +2,7 @@ package nflog
 
 // Config is used to pass multiple configuration options to NFLog's constructor.
 type Config struct {
-	// List of NFLog Group to listen. Max 32 values.
+	// List of NFLog Group to listen. Max 32 values. Each group can be 0-65535.
 	Groups []uint16
 
 	// Max number of bytes of the packet to receive
