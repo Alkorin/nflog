@@ -117,6 +117,7 @@ type Msg struct {
 	Group        uint16
 	Family       uint8
 	Prefix       string
+	Mark         *uint32
 	UID          *uint32
 	GID          *uint32
 	InDev        *uint32
@@ -125,4 +126,6 @@ type Msg struct {
 	MacLayerType *uint16
 	MacLayer     []byte
 	Payload      []byte
+	Sec          *int64
+	Usec         *int64
 }
