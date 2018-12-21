@@ -168,7 +168,7 @@ func (n *NFLog) parseNFMsg(buffer []byte) error {
 
 		// Check only packets
 		if header.Type == ((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_PACKET) {
-			err := n.parseNFPacket(buffer[16 : msgLen-1])
+			err := n.parseNFPacket(buffer[16 : msgLen])
 			if err != nil {
 				return errors.New("failed to parse NFPacket: " + err.Error())
 			}
