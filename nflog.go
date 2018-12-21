@@ -238,6 +238,17 @@ func (n *NFLog) parseNFPacket(buffer []byte) error {
 			payload := make([]byte, align4_16(payloadLen))
 			reader.Read(payload)
 			m.MacLayer = payload[:payloadLen]
+		case NFULA_MARK:
+			var mark uint32
+			binary.Read(reader, binary.BigEndian, &mark)
+			m.Mark = &mark
+		case NFULA_TIMESTAMP:
+			var sec int64
+			var usec int64
+			binary.Read(reader, binary.BigEndian, &sec)
+			binary.Read(reader, binary.BigEndian, &usec)
+			m.Sec = &sec
+			m.Usec = &usec
 		default:
 			reader.Seek(int64(align4_16(payloadLen)), io.SeekCurrent)
 		}
