@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"syscall"
 )
@@ -91,17 +92,7 @@ func (n *NFLog) sendNFConfigCmd(cmd uint8, family uint8, resId uint16) error {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, c)
 
-	err := syscall.Sendto(n.fd, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
-	if err != nil {
-		return err
-	}
-
-	// Wait reply
-	// TODO Parse/Check it
-	reply := make([]byte, 2048)
-	_, _, err = syscall.Recvfrom(n.fd, reply, 0)
-
-	return err
+	return n.sendNLMsg(buf.Bytes())
 }
 
 func (n *NFLog) sendNFConfigMode(resId uint16, copyLen uint16) error {
@@ -113,17 +104,48 @@ func (n *NFLog) sendNFConfigMode(resId uint16, copyLen uint16) error {
 	buf := new(bytes.Buffer)
 	binary.Write(buf, binary.LittleEndian, c)
 
-	err := syscall.Sendto(n.fd, buf.Bytes(), 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
+	return n.sendNLMsg(buf.Bytes())
+}
+
+func (n *NFLog) sendNLMsg(buf []byte) error {
+	err := syscall.Sendto(n.fd, buf, 0, &syscall.SockaddrNetlink{Family: syscall.AF_NETLINK})
 	if err != nil {
 		return err
 	}
 
 	// Wait reply
-	// TODO Parse/Check it
 	reply := make([]byte, 2048)
-	_, _, err = syscall.Recvfrom(n.fd, reply, 0)
+	size, _, err := syscall.Recvfrom(n.fd, reply, 0)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// Parse Message
+	msg, err := syscall.ParseNetlinkMessage(reply[:size])
+	if err != nil {
+		return err
+	}
+
+	if len(msg) != 1 {
+		return fmt.Errorf("Invalid len: %d\n", len(msg))
+	}
+
+	if msg[0].Header.Type != syscall.NLMSG_ERROR {
+		return fmt.Errorf("Invalid Msg Type: %d", msg[0].Header.Type)
+	}
+
+	// Read error
+	var nlerror nlmsgerr
+	err = binary.Read(bytes.NewReader(msg[0].Data), binary.LittleEndian, &nlerror)
+	if err != nil {
+		return err
+	}
+
+	if nlerror.Error != 0 {
+		return fmt.Errorf("Invalid Error code: %d", nlerror.Error)
+	}
+
+	return nil
 }
 
 func (n *NFLog) readNFMsg() {
@@ -168,7 +190,7 @@ func (n *NFLog) parseNFMsg(buffer []byte) error {
 
 		// Check only packets
 		if header.Type == ((NFNL_SUBSYS_ULOG << 8) | NFULNL_MSG_PACKET) {
-			err := n.parseNFPacket(buffer[16 : msgLen])
+			err := n.parseNFPacket(buffer[16:msgLen])
 			if err != nil {
 				return errors.New("failed to parse NFPacket: " + err.Error())
 			}
