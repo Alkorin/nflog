@@ -12,6 +12,11 @@ type nlmsghdr struct {
 	Pid   uint32
 }
 
+type nlmsgerr struct {
+	Error  int32    /* Negative errno or 0 for acknowledgements */
+	Header nlmsghdr /* Message header that caused the error */
+}
+
 type nfgenmsg struct {
 	Family  uint8
 	Version uint8
